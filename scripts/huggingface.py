@@ -1,14 +1,32 @@
 import os
+import time
 import numpy as np
 import gradio as gr
 from huggingface_hub import model_info, create_repo, create_branch, upload_folder, upload_file
 from huggingface_hub.utils import RepositoryNotFoundError, RevisionNotFoundError
 from modules import scripts, script_callbacks
-from subprocess import getoutput
+import subprocess
 
 def run(command):
-    out = getoutput(f"{command}")
-    return out
+    preproc = command.split()
+    preproc.extend(["|", "tee", "output.txt"])
+    proc = subprocess.Popen(preproc, stdout=subprocess.PIPE)
+    with open("output.txt", "w") as f:
+        while True:
+            line = proc.stdout.readline().decode("utf-8")
+            if not line:
+                break
+            f.write(line)
+            f.flush()
+            
+            # Read the contents of the file and display it in the In-browser text box
+            with open("output.txt", "r") as file:
+                gr.update(value=file.read())
+                #display(Markdown(file.read()))
+            
+            # Sleep for a short amount of time to allow the output to update
+            time.sleep(0.1)
+    
 
 def push_folder(folder_from, folder_to, branch, token):
     try:
